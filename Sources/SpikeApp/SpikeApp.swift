@@ -10,14 +10,26 @@ struct SpikeApp: App {
 }
 
 struct ContentView: View {
-    private let bill = 100.0
-    private let percent = 15.0
+    private let options = [4, 6, 8, 20]
+    @State private var sides = 6
+    @State private var result = 1
 
     var body: some View {
-        VStack(spacing: 8) {
-            Text("Bill: \(bill, specifier: "%.2f")")
-            Text("Tip (\(percent, specifier: "%.0f")%): \(TipCalculator.tip(bill: bill, percent: percent), specifier: "%.2f")")
-            Text("Total: \(TipCalculator.total(bill: bill, percent: percent), specifier: "%.2f")")
+        VStack(spacing: 24) {
+            Text("\(result)")
+                .font(.system(size: 96, weight: .bold, design: .rounded))
+                .accessibilityIdentifier("result")
+
+            Picker("Sides", selection: $sides) {
+                ForEach(options, id: \.self) { Text("d\($0)") }
+            }
+            .pickerStyle(.segmented)
+
+            Button("Roll") {
+                result = DiceRoller.roll(sides: sides)
+            }
+            .font(.title2)
+            .buttonStyle(.borderedProminent)
         }
         .padding()
     }

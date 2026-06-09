@@ -19,20 +19,38 @@ jobs:
           gem install xcpretty || sudo gem install xcpretty
       - name: Generate Xcode project
         run: xcodegen generate
-      - name: List available simulators (diagnostic)
-        run: xcrun simctl list devices available
+      - name: Pick simulator
+        run: |
+          DEST_ID=$(xcrun simctl list devices available --json | jq -r '[.devices[][] | select(.name | startswith("iPhone"))][0].udid')
+          echo "Using simulator id: $DEST_ID"
+          echo "DEST_ID=$DEST_ID" >> "$GITHUB_ENV"
       - name: Build and test
         run: |
           set -o pipefail
-          DEST_ID=$(xcrun simctl list devices available --json | jq -r '[.devices[][] | select(.name | startswith("iPhone"))][0].udid')
-          echo "Using simulator id: $DEST_ID"
           xcodebuild test \
             -project SpikeApp.xcodeproj \
             -scheme SpikeApp \
             -destination "id=$DEST_ID" \
+            -derivedDataPath dd \
             -resultBundlePath TestResults.xcresult \
             | xcpretty --report junit
-      - name: Upload results
+      - name: Capture app screenshot (best-effort, never fails the build)
+        if: always()
+        continue-on-error: true
+        run: |
+          set -x
+          APP=$(find dd/Build/Products -name "SpikeApp.app" -type d | head -1)
+          echo "APP=$APP"
+          xcrun simctl boot "$DEST_ID" || true
+          sleep 3
+          xcrun simctl install "$DEST_ID" "$APP" || true
+          BUNDLE_ID=$(/usr/libexec/PlistBuddy -c "Print :CFBundleIdentifier" "$APP/Info.plist")
+          echo "BUNDLE_ID=$BUNDLE_ID"
+          xcrun simctl launch "$DEST_ID" "$BUNDLE_ID" || true
+          sleep 6
+          xcrun simctl io "$DEST_ID" screenshot screen.png || true
+          ls -la screen.png || echo "no screenshot produced"
+      - name: Upload test results
         if: always()
         uses: actions/upload-artifact@v4
         with:
@@ -40,3 +58,10 @@ jobs:
           path: |
             build/reports/junit.xml
             TestResults.xcresult
+      - name: Upload app screenshot
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-screenshot
+          path: screen.png
+          if-no-files-found: warn
