@@ -1,0 +1,8 @@
+# XcodeGen output (regenerated on CI from project.yml)
+*.xcodeproj/
+# Build output
+build/
+DerivedData/
+*.xcresult
+# macOS
+.DS_Store

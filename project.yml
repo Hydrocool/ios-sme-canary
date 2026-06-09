@@ -1,0 +1,33 @@
+name: SpikeApp
+options:
+  bundleIdPrefix: com.alcon.iossme
+  deploymentTarget:
+    iOS: "17.0"
+targets:
+  SpikeApp:
+    type: application
+    platform: iOS
+    sources: [Sources/SpikeApp]
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES
+        PRODUCT_BUNDLE_IDENTIFIER: com.alcon.iossme.spikeapp
+        INFOPLIST_KEY_UILaunchScreen_Generation: YES
+  SpikeAppTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources: [Tests/SpikeAppTests]
+    dependencies:
+      - target: SpikeApp
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES
+schemes:
+  SpikeApp:
+    build:
+      targets:
+        SpikeApp: all
+        SpikeAppTests: [test]
+    test:
+      targets:
+        - SpikeAppTests

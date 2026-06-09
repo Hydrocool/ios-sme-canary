@@ -1,0 +1,42 @@
+name: iOS CI
+on:
+  push:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Select latest Xcode
+        run: |
+          latest=$(ls -d /Applications/Xcode_*.app | sort -V | tail -1)
+          echo "Selecting $latest"
+          sudo xcode-select -s "$latest"
+          xcodebuild -version
+      - name: Install XcodeGen + xcpretty
+        run: |
+          brew install xcodegen
+          gem install xcpretty || sudo gem install xcpretty
+      - name: Generate Xcode project
+        run: xcodegen generate
+      - name: List available simulators (diagnostic)
+        run: xcrun simctl list devices available
+      - name: Build and test
+        run: |
+          set -o pipefail
+          DEST_ID=$(xcrun simctl list devices available --json | jq -r '[.devices[][] | select(.name | startswith("iPhone"))][0].udid')
+          echo "Using simulator id: $DEST_ID"
+          xcodebuild test \
+            -project SpikeApp.xcodeproj \
+            -scheme SpikeApp \
+            -destination "id=$DEST_ID" \
+            -resultBundlePath TestResults.xcresult \
+            | xcpretty --report junit
+      - name: Upload results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: |
+            build/reports/junit.xml
+            TestResults.xcresult
